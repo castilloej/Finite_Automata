@@ -116,4 +116,4 @@ class SimulateNFA(SimulateFA):
         return None
 
 
-SimulateNFA(inputStructure='nfa2.txt', inputInput='input2.txt')
+SimulateNFA(inputStructure='nfa.txt')
