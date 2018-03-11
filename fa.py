@@ -1,31 +1,24 @@
 
 
-class SimulateFA:
+class FiniteAutomaton:
 
-    def __init__(self, inputStructure = 'dfa.txt', inputInput = 'input.txt', inputOutput = 'output.txt'):
+    def __init__(self, inputStructure = 'dfa.txt'):
 
         self._faFiles = {}
-        self._loadFiles(inputStructure, inputInput, inputOutput)
+        self._loadFiles(inputStructure)
 
         self._finalStates = self._startingState = self._States = self._Alphabet = None
         self._transitionRules = {}
         self._processStructure()
-
-        self._results = []
-        self._runTests()
-
-        self._dumpOutput()
 
     def __del__(self):
 
         for currentFile in self._faFiles:
             self._faFiles[currentFile].close()
 
-    def _loadFiles(self, inputStructure, inputInput, inputOutput):
+    def _loadFiles(self, inputStructure):
 
         self._faFiles['structure'] = open(inputStructure, 'r')
-        self._faFiles['input'] = open(inputInput, 'r')
-        self._faFiles['output'] = open(inputOutput, 'w')
 
     def _processStructure(self):
 
@@ -47,12 +40,47 @@ class SimulateFA:
 
             self._transitionRules[a][b].add(c)
 
+    def addFile(self, nickname, file, mode):
+        self._faFiles[nickname] = open(file, mode)
+
+    def getFile(self, requestedFile):
+        return self._faFiles[requestedFile]
+
+    def getTransitions(self):
+        return self._transitionRules
+
+    def getFinalStates(self):
+        return self._finalStates
+
+    def getStartingState(self):
+        return self._startingState
+
+    def getStates(self):
+        return self._States
+
+    def getAlphabet(self):
+        return self._Alphabet
+
+
+class SimulateFA:
+
+    def __init__(self, inputStructure = 'dfa.txt', inputInput = 'input.txt', inputOutput = 'output.txt'):
+
+        self._FA = FiniteAutomaton(inputStructure=inputStructure)
+        self._FA.addFile('input', inputInput, 'r')
+        self._FA.addFile('output', inputOutput, 'w')
+
+        self._results = []
+        self._runTests()
+
+        self._dumpOutput()
+
     def _runTests(self):
 
-        fileLines = self._faFiles['input'].read().splitlines()
+        fileLines = self._FA.getFile('input').read().splitlines()
 
         for test in fileLines:
-            simulationResult = 'accept' if self._simulate(test) in self._finalStates else 'reject'
+            simulationResult = 'accept' if self._simulate(test) in self._FA.getFinalStates() else 'reject'
             self._results.append(simulationResult)
 
     def _simulate(self, test):
@@ -61,16 +89,18 @@ class SimulateFA:
 
     def _dumpOutput(self):
 
-        self._faFiles['output'].write('\n'.join(self._results))
+        self._FA.getFile('output').write('\n'.join(self._results))
 
 
 class SimulateDFA(SimulateFA):
 
     def _simulate(self, test):
 
-        currentState = self._startingState
+        transitionRules = self._FA.getTransitions()
+        currentState = self._FA.getStartingState()
+
         for transition in test:
-            here = [element for element in self._transitionRules[currentState][transition]]
+            here = [element for element in transitionRules[currentState][transition]]
             currentState = here[0]
 
         return currentState
@@ -80,7 +110,9 @@ class SimulateNFA(SimulateFA):
 
     def _simulate(self, test):
 
-        queue = {(self._startingState, test)}
+        transitionRules = self._FA.getTransitions()
+        finalStates = self._FA.getFinalStates()
+        queue = {(self._FA.getStartingState(), test)}
         knowledge = set()
 
         while queue:
@@ -88,11 +120,11 @@ class SimulateNFA(SimulateFA):
             currentState, stringTest = queue.pop()
             knowledge.add((currentState, stringTest))
 
-            if currentState in self._transitionRules:
+            if currentState in transitionRules:
 
                 processMoves = {}
 
-                if '$' in self._transitionRules[currentState]:
+                if '$' in transitionRules[currentState]:
                     processMoves['$'] = stringTest
 
                 if stringTest:
@@ -100,14 +132,14 @@ class SimulateNFA(SimulateFA):
 
                 for move in processMoves:
 
-                    if move in self._transitionRules[currentState]:
+                    if move in transitionRules[currentState]:
 
-                        for newState in self._transitionRules[currentState][move]:
+                        for newState in transitionRules[currentState][move]:
 
                             if newState == '$':
                                 continue
 
-                            if not processMoves[move] and newState in self._finalStates:
+                            if not processMoves[move] and newState in finalStates:
                                 return newState
 
                             if (newState, processMoves[move]) not in knowledge:
@@ -116,4 +148,70 @@ class SimulateNFA(SimulateFA):
         return None
 
 
-SimulateNFA(inputStructure='nfa.txt')
+def NFAtoDFA(finiteAutomata):
+
+    alphabet = finiteAutomata.getAlphabet()
+    currentTransitions = finiteAutomata.getTransitions()
+
+    newTransitions = {}
+    newStates = []
+    newfinalStates = []
+
+    # TODO: Use reachKnowledge for dynamic programming.
+    # TODO: Code has to be optimized and cleaned.
+    reachKnowledge = set()
+
+    process = {tuple([finiteAutomata.getStartingState()])}
+
+    while process:
+
+        currentlyProcessing = process.pop()
+
+        for letter in alphabet:
+
+            sCurrentlyProcessing = set(currentlyProcessing)
+
+            thisReaches = set()
+
+            visited = set()
+            while sCurrentlyProcessing:
+
+                useThis = sCurrentlyProcessing.pop()
+                visited.add(useThis)
+
+                if useThis in currentTransitions and letter in currentTransitions[useThis]:
+                    thisReaches = thisReaches.union(currentTransitions[useThis][letter])
+
+                if useThis in currentTransitions and '$' in currentTransitions[useThis]:
+                    sCurrentlyProcessing = sCurrentlyProcessing.union(currentTransitions[useThis]['$'])
+
+            yas = ''.join(currentlyProcessing)
+            if yas not in newTransitions:
+                newTransitions[yas] = {}
+
+            thisReaches = thisReaches if thisReaches else {'uniqueDeadElement'}
+
+            theTuple = tuple(thisReaches)
+            maybe = ''.join(theTuple)
+
+            if thisReaches.intersection(finiteAutomata.getFinalStates()) and maybe not in newfinalStates:
+                newfinalStates.append(maybe)
+
+            newTransitions[yas][letter] = maybe
+
+            if yas not in newStates:
+                newStates.append(yas)
+
+            if maybe not in newTransitions:
+                process.add(theTuple)
+
+    print(','.join(newStates))
+    print(','.join(alphabet))
+    print(finiteAutomata.getStartingState())
+    print(','.join(newfinalStates))
+
+    for k, v in newTransitions.items():
+
+        for letter in alphabet:
+
+            print(k + ',' + letter + ',' + newTransitions[k][letter])
