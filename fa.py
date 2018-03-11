@@ -148,7 +148,7 @@ class SimulateNFA(SimulateFA):
         return None
 
 
-def NFAtoDFA(finiteAutomata):
+def NFAtoDFA(finiteAutomata, outputFile='dfa.txt'):
 
     alphabet = finiteAutomata.getAlphabet()
     currentTransitions = finiteAutomata.getTransitions()
@@ -205,13 +205,23 @@ def NFAtoDFA(finiteAutomata):
             if maybe not in newTransitions:
                 process.add(theTuple)
 
-    print(','.join(newStates))
-    print(','.join(alphabet))
-    print(finiteAutomata.getStartingState())
-    print(','.join(newfinalStates))
+    finiteAutomata.addFile('newDFA', outputFile, 'w')
 
+    prepare = list()
+
+    prepare.append(','.join(newStates))
+    prepare.append(','.join(alphabet))
+    prepare.append(finiteAutomata.getStartingState())
+    prepare.append(','.join(newfinalStates))
+
+    prepare2 = []
     for k, v in newTransitions.items():
 
         for letter in alphabet:
+            prepare2.append(k + ',' + letter + ',' + newTransitions[k][letter])
 
-            print(k + ',' + letter + ',' + newTransitions[k][letter])
+    prepare.append('\n'.join(prepare2))
+
+    finiteAutomata.getFile('newDFA').write('\n'.join(prepare))
+
+
