@@ -159,7 +159,7 @@ def NFAtoDFA(finiteAutomata, outputFile='dfa.txt'):
 
     # TODO: Use reachKnowledge for dynamic programming.
     # TODO: Code has to be optimized and cleaned.
-    reachKnowledge = set()
+    reachKnowledge = {}
 
     process = {tuple([finiteAutomata.getStartingState()])}
 
@@ -173,11 +173,9 @@ def NFAtoDFA(finiteAutomata, outputFile='dfa.txt'):
 
             thisReaches = set()
 
-            visited = set()
             while sCurrentlyProcessing:
 
                 useThis = sCurrentlyProcessing.pop()
-                visited.add(useThis)
 
                 if useThis in currentTransitions and letter in currentTransitions[useThis]:
                     thisReaches = thisReaches.union(currentTransitions[useThis][letter])
@@ -223,5 +221,9 @@ def NFAtoDFA(finiteAutomata, outputFile='dfa.txt'):
     prepare.append('\n'.join(prepare2))
 
     finiteAutomata.getFile('newDFA').write('\n'.join(prepare))
+
+
+NFAtoDFA(FiniteAutomaton(inputStructure='nfa.txt'), outputFile='dfaYay.txt')
+
 
 
